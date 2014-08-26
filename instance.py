@@ -1,3 +1,4 @@
+import os
 import time
 import string
 import random
@@ -8,14 +9,15 @@ from json import dumps as json_dumps
 from oauth2client.client import SignedJwtAssertionCredentials
 
 
-SCOPE_SQLSERVICE = 'https://www.googleapis.com/auth/sqlservice.admin'
-PROJECT_ID = 'titanpaas'
+SCOPE_SQLSERVICE = os.getenv('SCOPE_SQLSERVICE', 'https://www.googleapis.com/auth/sqlservice.admin')
+PROJECT_ID = os.getenv('PROJECT_ID', 'titanpaas')
+KEY_NAME = os.getenv('KEY_NAME', 'service_account_key.p12')
 
 
 def get_authenticated_service():
     credentials = SignedJwtAssertionCredentials(
         '270233216449-ncjv2h895qv8tu0aed5pgorka9l2vuil@developer.gserviceaccount.com',
-        open('service_account_key.p12', 'rb').read(),
+        open(KEY_NAME, 'rb').read(),
         scope=SCOPE_SQLSERVICE,
         token_uri='https://accounts.google.com/o/oauth2/token')
 
