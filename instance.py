@@ -1,4 +1,6 @@
 import time
+import string
+import random
 import httplib2
 
 from apiclient.discovery import build as discovery_build
@@ -8,10 +10,6 @@ from oauth2client.client import SignedJwtAssertionCredentials
 
 SCOPE_SQLSERVICE = 'https://www.googleapis.com/auth/sqlservice.admin'
 PROJECT_ID = 'titanpaas'
-
-count = 0
-cmin = 10000
-cmax = 0
 
 
 def get_authenticated_service():
@@ -25,10 +23,7 @@ def get_authenticated_service():
     return discovery_build('sqladmin', 'v1beta3', http=http)
 
 
-def create_instance(service, instance, tier="D0"):
-    global count
-    global cmin
-    global cmax
+def create_instance(service, instance, password, tier="D0"):
     print {
         "project": PROJECT_ID,
         "instance": instance,
@@ -51,23 +46,19 @@ def create_instance(service, instance, tier="D0"):
 
     req = service.operations().get(project=PROJECT_ID, instance=instance, operation=resp['operation'])
     resp = req.execute()
-    # print json_dumps(resp, indent=2)
 
-    for i in range(60):
+    for _ in range(60):
         req = service.operations().get(project=PROJECT_ID, instance=instance, operation=resp['operation'])
         resp = req.execute()
-        count += 1
         if resp['state'] == 'DONE':
             req = service.instances().setRootPassword(project=PROJECT_ID, instance=instance, body={
                 "setRootPasswordContext": {
-                    "password": "verysecret",
+                    "password": password,
                     "kind": "sql#setRootUserContext"
                 }
             })
             resp = req.execute()
             # print json_dumps(resp, indent=2)
-            cmin = min(cmin, i)
-            cmax = max(cmax, i)
             break
         time.sleep(1)
 
@@ -77,19 +68,17 @@ def delete_instance(service, instance):
     _resp = req.execute()
     # TODO check if its done
 
+
+def generate_password(length=16):
+    return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
+
+
 if __name__ == '__main__':
     service = get_authenticated_service()
-    n = 30
-    for i in range(170, (170+n)):
-        try:
-            delete_instance(service, "mkwtest%s" % i)
-        except:
-            pass
-        create_instance(service, "mkwtest%s" % str(i+1), tier="D32")
-
-    print "THE AVERAGE: %s" % str(count/n)
-    print "THE MIN: %s" % str(cmin)
-    print "THE MAX: %s" % str(cmax)
+    # delete_instance(service, "mkwtest%s" % i)
+    instance = "mwktest-%d" % int(time.time())
+    password = generate_password()
+    create_instance(service, instance, password, tier="D0")
 
     req = service.instances().list(project='titanpaas')
     resp = req.execute()
