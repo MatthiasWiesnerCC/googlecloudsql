@@ -24,15 +24,6 @@ def get_authenticated_service():
 
 
 def create_instance(service, instance, password, tier="D0"):
-    print {
-        "project": PROJECT_ID,
-        "instance": instance,
-        "settings": {
-            "tier": tier,
-            "ipConfiguration": {
-                "authorizedNetworks": ["0.0.0.0/0"],
-                "enabled": True
-            }}}
     req = service.instances().insert(project=PROJECT_ID, body={
         "project": PROJECT_ID,
         "instance": instance,
@@ -58,15 +49,14 @@ def create_instance(service, instance, password, tier="D0"):
                 }
             })
             resp = req.execute()
-            # print json_dumps(resp, indent=2)
             break
         time.sleep(1)
+    raise Exception('Instance could not be created in 60 seconds')
 
 
 def delete_instance(service, instance):
     req = service.instances().delete(project=PROJECT_ID, instance=instance)
-    _resp = req.execute()
-    # TODO check if its done
+    return req.execute()
 
 
 def generate_password(length=16):
