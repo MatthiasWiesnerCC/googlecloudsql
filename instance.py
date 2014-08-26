@@ -9,6 +9,10 @@ from oauth2client.client import SignedJwtAssertionCredentials
 SCOPE_SQLSERVICE = 'https://www.googleapis.com/auth/sqlservice.admin'
 PROJECT_ID = 'titanpaas'
 
+count = 0
+cmin = 10000
+cmax = 0
+
 
 def get_authenticated_service():
     credentials = SignedJwtAssertionCredentials(
@@ -22,6 +26,18 @@ def get_authenticated_service():
 
 
 def create_instance(service, instance, tier="D0"):
+    global count
+    global cmin
+    global cmax
+    print {
+        "project": PROJECT_ID,
+        "instance": instance,
+        "settings": {
+            "tier": tier,
+            "ipConfiguration": {
+                "authorizedNetworks": ["0.0.0.0/0"],
+                "enabled": True
+            }}}
     req = service.instances().insert(project=PROJECT_ID, body={
         "project": PROJECT_ID,
         "instance": instance,
@@ -35,11 +51,12 @@ def create_instance(service, instance, tier="D0"):
 
     req = service.operations().get(project=PROJECT_ID, instance=instance, operation=resp['operation'])
     resp = req.execute()
-    print json_dumps(resp, indent=2)
-    for _ in range(60):
+    # print json_dumps(resp, indent=2)
+
+    for i in range(60):
         req = service.operations().get(project=PROJECT_ID, instance=instance, operation=resp['operation'])
         resp = req.execute()
-        print json_dumps(resp, indent=2)
+        count += 1
         if resp['state'] == 'DONE':
             req = service.instances().setRootPassword(project=PROJECT_ID, instance=instance, body={
                 "setRootPasswordContext": {
@@ -48,7 +65,9 @@ def create_instance(service, instance, tier="D0"):
                 }
             })
             resp = req.execute()
-            print json_dumps(resp, indent=2)
+            # print json_dumps(resp, indent=2)
+            cmin = min(cmin, i)
+            cmax = max(cmax, i)
             break
         time.sleep(1)
 
@@ -60,9 +79,18 @@ def delete_instance(service, instance):
 
 if __name__ == '__main__':
     service = get_authenticated_service()
+    n = 30
+    for i in range(170, (170+n)):
+        try:
+            delete_instance(service, "mkwtest%s" % i)
+        except:
+            pass
+        create_instance(service, "mkwtest%s" % str(i+1), tier="D32")
 
-    delete_instance(service, "mkwtest11")
-    create_instance(service, "mkwtest12", tier="D2")
+    print "THE AVERAGE: %s" % str(count/n)
+    print "THE MIN: %s" % str(cmin)
+    print "THE MAX: %s" % str(cmax)
+
     req = service.instances().list(project='titanpaas')
     resp = req.execute()
     print json_dumps(resp, indent=2)
